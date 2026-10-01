@@ -521,4 +521,254 @@ local function LoadMainHub()
                 local l_arm = char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftUpperArm")
                 local r_arm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightUpperArm")
                 local l_leg = char:FindFirstChild("Left Leg") or char:FindFirstChild("LeftUpperLeg")
+local r_leg = char:FindFirstChild("Right Leg") or char:FindFirstChild("RightUpperLeg")
+
+                if head and torso then
+                    local function UpdateLine(line, part1, part2)
+                        if part1 and part2 then
+                            local pos1, vis1 = Camera:WorldToViewportPoint(part1.Position)
+                            local pos2, vis2 = Camera:WorldToViewportPoint(part2.Position)
+                            if vis1 and vis2 then
+                                line.From = Vector2.new(pos1.X, pos1.Y)
+                                line.To = Vector2.new(pos2.X, pos2.Y)
+                                line.Visible = true
+                                return
+                            end
+                        end
+                        line.Visible = false
+                    end
+
+                    UpdateLine(l_Head_Torso, head, torso)
+                    UpdateLine(l_Torso_LArm, torso, l_arm)
+                    UpdateLine(l_Torso_RArm, torso, r_arm)
+                    UpdateLine(l_Torso_LLeg, torso, l_leg)
+                    UpdateLine(l_Torso_RLeg, torso, r_leg)
+                else
+                    for _, l in pairs(Lines) do l.Visible = false end
+                end
+            else
+                for _, l in pairs(Lines) do l.Visible = false end
+                if not plr or not plr.Parent then
+                    for _, l in pairs(Lines) do l:Remove() end
+                    Connection:Disconnect()
+                end
+            end
+        end)
+    end
+
+    for _, plr in pairs(Players:GetPlayers()) do if plr ~= LocalPlayer then DrawSkeletonForPlayer(plr) end end
+    Players.PlayerAdded:Connect(function(plr) DrawSkeletonForPlayer(plr) end)
+
+    ESPTab:CreateToggle({
+       Name = "Bật ESP Khung Người Que Màu Xanh (Skeleton)",
+       CurrentValue = false,
+       Flag = "SkeletonESPToggle",
+       Callback = function(Value) ESP_SkeletonEnabled = Value end,
+    })
+
+    local function AddNameESP(plr)
+        task.spawn(function()
+            while task.wait(1) do
+                if ESP_NameEnabled and plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Head") then
+                    if not plr.Character.Head:FindFirstChild("NameTagESP") then
+                        local billboard = Instance.new("BillboardGui")
+                        billboard.Name = "NameTagESP"
+                        billboard.Adornee = plr.Character.Head
+                        billboard.Size = UDim2.new(0, 100, 0, 30)
+                        billboard.StudsOffset = Vector3.new(0, 2, 0)
+                        billboard.AlwaysOnTop = true
+
+                        local nameLabel = Instance.new("TextLabel")
+                        nameLabel.Size = UDim2.new(1, 0, 1, 0)
+                        nameLabel.BackgroundTransparency = 1
+                        nameLabel.Text = plr.Name
+                        nameLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+                        nameLabel.TextSize = 14
+                        nameLabel.Font = Enum.Font.GothamBold
+                        nameLabel.Parent = billboard
+
+                        billboard.Parent = plr.Character.Head
+                    end
+                else
+                    if plr.Character and plr.Character:FindFirstChild("Head") and plr.Character.Head:FindFirstChild("NameTagESP") then
+                        plr.Character.Head.NameTagESP:Destroy()
+                    end
+                end
+            end
+        end)
+    end
+
+    for _, plr in pairs(Players:GetPlayers()) do AddNameESP(plr) end
+    Players.PlayerAdded:Connect(AddNameESP)
+
+    ESPTab:CreateToggle({
+       Name = "Hiện Tên Người Chơi (Name ESP)",
+       CurrentValue = false,
+       Flag = "NameESPToggle",
+       Callback = function(Value) ESP_NameEnabled = Value end,
+    })
+
+    -- ========================================================
+    --                 TAB 5: DASHBOARD STATS
+    -- ========================================================
+    local FPSLabel = MonitorTab:CreateLabel("FPS Hiện Tại: Đang tính...")
+    local PingLabel = MonitorTab:CreateLabel("Ping: Đang tính...")
+    local RAMLabel = MonitorTab:CreateLabel("RAM Sử Dụng: Đang tính...")
+    local UptimeLabel = MonitorTab:CreateLabel("Thời Gian Đã Treo: 00g 00p 00s")
+
+    task.spawn(function()
+        local FrameCount = 0
+        local LastFPSUpdate = tick()
+        local CurrentFPS = 60
+
+        RunService.RenderStepped:Connect(function()
+            FrameCount = FrameCount + 1
+            if tick() - LastFPSUpdate >= 1 then
+                CurrentFPS = FrameCount
+                FrameCount = 0
+                LastFPSUpdate = tick()
+            end
+        end)
+
+        while task.wait(1) do
+            pcall(function()
+                local TotalSeconds = math.floor(tick() - StartTime)
+                local Hours = math.floor(TotalSeconds / 3600)
+                local Mins = math.floor((TotalSeconds % 3600) / 60)
+                local Secs = TotalSeconds % 60
+                
+                local Ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+                local MemoryMB = math.floor(Stats:GetTotalMemoryUsageMb())
+
+                FPSLabel:Set("FPS Hiện Tại: " .. tostring(CurrentFPS) .. " FPS")
+                PingLabel:Set("Ping Hiện Tại: " .. tostring(Ping) .. " ms")
+                RAMLabel:Set("RAM Game Ngốn: " .. tostring(MemoryMB) .. " MB")
+                UptimeLabel:Set(string.format("Thời Gian Treo: %02dg %02dp %02ds", Hours, Mins, Secs))
+            end)
+        end
+    end)
+
+    -- ========================================================
+    --                 TAB 6: CÔNG CỤ AFK PRO
+    -- ========================================================
+    ToolsTab:CreateButton({
+       Name = "🧹 Smart RAM Cleaner (Giải Phóng Bộ Nhớ Ngay)",
+       Callback = function()
+          collectgarbage("collect")
+          Rayfield:Notify({ Title = "RAM Cleaner", Content = "Đã dọn dẹp bộ nhớ RAM thừa thành công!", Duration = 3 })
+       end,
+    })
+
+    ToolsTab:CreateButton({
+       Name = "🌐 Auto Server Hop (Sang Server Ít Người)",
+       Callback = function()
+          Rayfield:Notify({ Title = "Server Hop", Content = "Đang tìm Server ít người nhất...", Duration = 3 })
+          task.spawn(function()
+             pcall(function()
+                local PlaceId = game.PlaceId
+                local Servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/0?sortOrder=Asc&limit=100")).data
+                for _, server in pairs(Servers) do
+                   if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                      TeleportService:TeleportToPlaceInstance(PlaceId, server.id, LocalPlayer)
+                      break
+                   end
+                end
+             end)
+          end)
+       end,
+    })
+
+    ToolsTab:CreateInput({
+       Name = "Nhập Discord Webhook URL",
+       PlaceholderText = "https://discord.com/api/webhooks/...",
+       RemoveTextOnFocus = false,
+       Callback = function(Text) WebhookURL = Text end,
+    })
+
+    -- HÀM GỬI DISCORD WEBHOOK BẤT ĐỒNG BỘ (ASYNC - CHỐNG FREEZE PING)
+    local function SendDiscordWebhookAsync()
+        if WebhookURL == "" or not string.find(WebhookURL, "http") then
+            Rayfield:Notify({ Title = "Webhook Error", Content = "Vui lòng nhập Webhook URL hợp lệ!", Duration = 3 })
+            return
+        end
+
+        -- Chạy luồng phụ ngầm trong task.spawn()
+        task.spawn(function()
+            pcall(function()
+                local TotalSeconds = math.floor(tick() - StartTime)
+                local Hours = math.floor(TotalSeconds / 3600)
+                local Mins = math.floor((TotalSeconds % 3600) / 60)
+                local MemoryMB = math.floor(Stats:GetTotalMemoryUsageMb())
+                local Ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+
+                local Payload = {
+                    ["embeds"] = {{
+                        ["title"] = "🇻🇳 Vietnam Hub v5.0 - Báo Cáo Trạng Thái AFK",
+                        ["color"] = 65280,
+                        ["fields"] = {
+                            {["name"] = "👤 Tên Tài Khoản", ["value"] = LocalPlayer.Name, ["inline"] = true},
+                            {["name"] = "🎮 Game Place ID", ["value"] = tostring(game.PlaceId), ["inline"] = true},
+                            {["name"] = "⏳ Uptime (Đã Treo)", ["value"] = string.format("%02dg %02dp", Hours, Mins), ["inline"] = true},
+                            {["name"] = "📊 RAM Ngốn", ["value"] = tostring(MemoryMB) .. " MB", ["inline"] = true},
+                            {["name"] = "📶 Ping Server", ["value"] = tostring(Ping) .. " ms", ["inline"] = true}
+                        },
+                        ["footer"] = {["text"] = "Vietnam Hub Engine v5.0 Anti-Lag"}
+                    }}
+                }
+
+                local Request = (syn and syn.request) or (http and http.request) or http_request or request
+                if Request then
+                    Request({
+                        Url = WebhookURL,
+                        Method = "POST",
+                        Headers = {["Content-Type"] = "application/json"},
+                        Body = HttpService:JSONEncode(Payload)
+                    })
+                    Rayfield:Notify({ Title = "Webhook", Content = "Đã gửi báo cáo ngầm về Discord!", Duration = 3 })
+                end
+            end)
+        end)
+    end
+
+    ToolsTab:CreateButton({
+       Name = "📡 Gửi Báo Cáo Trạng Thái Về Discord Ngay",
+       Callback = function()
+          SendDiscordWebhookAsync()
+       end,
+    })
+
+    ToolsTab:CreateToggle({
+       Name = "⏰ Tự Động Gửi Báo Cáo Discord Mọi 30 Phút",
+       CurrentValue = false,
+       Flag = "AutoWebhookToggle",
+       Callback = function(Value)
+          AutoWebhookEnabled = Value
+          if AutoWebhookEnabled then
+             task.spawn(function()
+                while AutoWebhookEnabled do
+                   task.wait(1800)
+                   if AutoWebhookEnabled then SendDiscordWebhookAsync() end
+                end
+             end)
+          end
+       end,
+    })
+
+    Rayfield:Notify({ Title = "Vietnam Hub v5.0", Content = "Khởi chạy thành công! Sẵn sàng treo AFK siêu mượt.", Duration = 4 })
+end
+
+-- ========================================================
+--                  XỬ LÝ NÚT XÁC NHẬN KEY
+-- ========================================================
+SubmitBtn.MouseButton1Click:Connect(function()
+    if KeyInput.Text == CorrectKey then
+        StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 120)
+        StatusLabel.Text = "Key chính xác! Đang tải Vietnam Hub v5.0..."
+        task.wait(1)
+        LoadMainHub()
+    else
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 60, 60)
+        StatusLabel.Text = "Key không đúng! Vui lòng kiểm tra lại."
+    end
+end)
        
